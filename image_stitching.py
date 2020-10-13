@@ -129,6 +129,7 @@ def compute_homography(src, dst):
 
     return h_matrix
 
+
 def harris_corners(img, window_size=3, k=0.04):
     """
     Compute Harris corner response map. Follow the math equation
@@ -153,9 +154,26 @@ def harris_corners(img, window_size=3, k=0.04):
     response = np.zeros((H, W))
 
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    # Compute x-y derivatives of image
+    Ix = filters.sobel_v(img)
+    Iy = filters.sobel_h(img)
+    
+    # Compute product of derivative at every pixel
+    Ixx = Ix * Ix
+    Iyy = Iy * Iy
+    Ixy = Ix * Iy
+    
+    # Compute sum of the product of derivative at every pixel
+    Sxx = convolve(Ixx, window)
+    Syy = convolve(Iyy, window)
+    Sxy = convolve(Ixy, window)
+    
+    # Get response
+    for h in range(0,H):
+        for w in range(0, W):
+            response[h][w] = (Sxx[h][w]*Syy[h][w] - Sxy[h][w]*Sxy[h][w]) - (k * math.pow(Sxx[h][w] + Syy[h][w], 2))
+    
     ### END YOUR CODE
-
     return response
 
 
@@ -179,9 +197,16 @@ def simple_descriptor(patch):
     """
     feature = []
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    standard_deviation = np.std(patch)
+    mean = np.mean(patch)
+    
+    if standard_deviation > 0.0:
+        feature = (patch - mean) / standard_deviation
+    else:
+        feature = patch - mean
+        
     ### END YOUR CODE
-    return feature
+    return feature.flatten()
 
 
 def describe_keypoints(image, keypoints, desc_func, patch_size=16):
