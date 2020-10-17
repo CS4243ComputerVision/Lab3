@@ -101,7 +101,7 @@ def transform_homography(src, h_matrix, getNormalized = True):
     if getNormalized:
         transformed = transformed[:-1]/transformed[-1]
     transformed = transformed.transpose().astype(np.float32)
-    
+
     return transformed
 
 def compute_homography(src, dst):
@@ -157,22 +157,22 @@ def harris_corners(img, window_size=3, k=0.04):
     # Compute x-y derivatives of image
     Ix = filters.sobel_v(img)
     Iy = filters.sobel_h(img)
-    
+
     # Compute product of derivative at every pixel
     Ixx = Ix * Ix
     Iyy = Iy * Iy
     Ixy = Ix * Iy
-    
+
     # Compute sum of the product of derivative at every pixel
     Sxx = convolve(Ixx, window)
     Syy = convolve(Iyy, window)
     Sxy = convolve(Ixy, window)
-    
+
     # Get response
     for h in range(0,H):
         for w in range(0, W):
             response[h][w] = (Sxx[h][w]*Syy[h][w] - Sxy[h][w]*Sxy[h][w]) - (k * math.pow(Sxx[h][w] + Syy[h][w], 2))
-    
+
     ### END YOUR CODE
     return response
 
@@ -199,12 +199,12 @@ def simple_descriptor(patch):
     ### YOUR CODE HERE
     standard_deviation = np.std(patch)
     mean = np.mean(patch)
-    
+
     if standard_deviation > 0.0:
         feature = (patch - mean) / standard_deviation
     else:
         feature = patch - mean
-        
+
     ### END YOUR CODE
     return feature.flatten()
 
@@ -249,15 +249,32 @@ def match_descriptors(desc1, desc2, threshold=0.5):
         of matching descriptors
     """
     matches = []
-    
+
     N = desc1.shape[0]
     dists = cdist(desc1, desc2)
 
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    top_ind = np.argpartition(dists, 1)[:, :2]
+    top_dist = np.sort(dists[0, top_ind[:]], -1)
+    dist_ratio = top_dist[:, 0] / top_dist[:, 1]
+    mask = dist_ratio < threshold
+    accepted_row = np.argwhere(mask)
+    accepted_col = top_ind[mask]
+
+    matches = ([[accepted_row[i], accepted_col[i, 0]] for i in range(len(accepted_col))])
+
+    dists2 = dists.T
+    top_ind = np.argpartition(dists2, 1)[:, :2]
+    top_dist = np.sort(dists2[0, top_ind[:]], -1)
+    dist_ratio = top_dist[:, 0] / top_dist[:, 1]
+    mask = dist_ratio < threshold
+    accepted_row = np.argwhere(mask)
+    accepted_col = top_ind[mask]
+
+    matches2 = ([[accepted_col[i, 0], accepted_row[i]] for i in range(len(accepted_col))])
     ### END YOUR CODE
-    
-    return matches
+
+    return np.array(matches + matches2)
 
 def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, threshold=20):
     """
@@ -337,15 +354,15 @@ def sift_descriptor(patch):
     Returns:
         feature: 1D array of shape (128, )
     """
-    
+
     dx = filters.sobel_v(patch)
     dy = filters.sobel_h(patch)
     histogram = np.zeros((4,4,8))
-    
+
     ### YOUR CODE HERE
     raise NotImplementedError() # Delete this line
     # END YOUR CODE
-    
+
     return feature
 
 
