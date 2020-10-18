@@ -124,7 +124,25 @@ def compute_homography(src, dst):
     h_matrix = np.eye(3, dtype=np.float64)
 
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+
+    N = src.shape[0]
+
+    # todo: normalisation
+    x = src
+    x2 = dst
+
+    A = []
+    for i in range(N):
+        x = src[i]
+        x2 = dst[i]
+        A.append([0, 0, 0, -x[0], -x[1], -1, x[0] * x2[1], x[1] * x2[1]])
+        A.append([x[0], x[1], 1, 0, 0, 0, -x[0] * x2[0], -x[1] * x2[0]])
+
+    #todo: why is this taking forever
+    u, s, vh = np.linalg.svd(np.array(A))
+
+    h_matrix = s.reshape(3, 3)
+
     ### END YOUR CODE
 
     return h_matrix
@@ -255,26 +273,15 @@ def match_descriptors(desc1, desc2, threshold=0.5):
 
     ### YOUR CODE HERE
     top_ind = np.argpartition(dists, 1)[:, :2]
-    top_dist = np.sort(dists[0, top_ind[:]], -1)
-    dist_ratio = top_dist[:, 0] / top_dist[:, 1]
+    dist_ratio = dists[np.arange(N), top_ind[:,0]] / dists[np.arange(N), top_ind[:,1]]
     mask = dist_ratio < threshold
     accepted_row = np.argwhere(mask)
     accepted_col = top_ind[mask]
 
-    matches = ([[accepted_row[i], accepted_col[i, 0]] for i in range(len(accepted_col))])
-
-    dists2 = dists.T
-    top_ind = np.argpartition(dists2, 1)[:, :2]
-    top_dist = np.sort(dists2[0, top_ind[:]], -1)
-    dist_ratio = top_dist[:, 0] / top_dist[:, 1]
-    mask = dist_ratio < threshold
-    accepted_row = np.argwhere(mask)
-    accepted_col = top_ind[mask]
-
-    matches2 = ([[accepted_col[i, 0], accepted_row[i]] for i in range(len(accepted_col))])
+    matches = np.array([[accepted_row[i, 0], accepted_col[i, 0]] for i in range(len(accepted_col))])
     ### END YOUR CODE
 
-    return np.array(matches + matches2)
+    return matches
 
 def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, threshold=20):
     """
