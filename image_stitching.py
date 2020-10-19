@@ -195,9 +195,7 @@ def compute_homography(src, dst):
     h_matrix = np.eye(3, dtype=np.float64)
 
     ### YOUR CODE HERE
-    
-    # print(h_matrix)
-
+   
     N = src.shape[0]
        
     X1, S1 = normalize(src)
@@ -207,20 +205,14 @@ def compute_homography(src, dst):
     for i in range(N):
         y1, x1, w1 = X1[i]
         y2, x2, w2 = X2[i]
-        A.append([x1*-w2,y1*w2,-w1*w2,0,0,0,x1*x2,y1*x2,w1*x2])
+        A.append([x1*-w2,-y1*w2,-w1*w2,0,0,0,x1*x2,y1*x2,w1*x2])
         A.append([0,0,0,x1*-w2,y1*-w2,w1*-w2,x1*y2,y1*y2,w1*y2])
        
     u, s, vh = np.linalg.svd(np.array(A))
     h_matrix = s.reshape(3, 3)
     
-    print("++++++")
-    print(h_matrix)
-    
     S1_inverse = np.linalg.inv(S1)
-    print("=====")
-#     h_matrix = np.matmul(np.matmul(S1_inverse, h_matrix), S2)
     h_matrix = np.matmul(S1_inverse, np.matmul(h_matrix, S2))
-    print(h_matrix)
     ### END YOUR CODE
 
     return h_matrix
