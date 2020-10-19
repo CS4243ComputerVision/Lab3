@@ -105,12 +105,75 @@ def transform_homography(src, h_matrix, getNormalized = True):
     return transformed
 
 
-def normalize(points):
-    mean = np.mean(points)
-    points = points - mean
-    scale = math.sqrt(2)/np.linalg.norm(points)
-    return points * scale, mean, scale
+# def normalize(points):
+#     mean = np.mean(points)
+#     points = points - mean
+#     scale = math.sqrt(2)/np.linalg.norm(points)
+#     return points * scale, mean, scale
 
+
+
+# def compute_homography(src, dst):
+#     """Calculates the perspective transform from at least 4 points of
+#     corresponding points using the **Normalized** Direct Linear Transformation
+#     method.
+#     Args:
+#         src (np.ndarray): Coordinates of points in the first image (N,2)
+#         dst (np.ndarray): Corresponding coordinates of points in the second
+#                           image (N,2)
+#     Returns:
+#         h_matrix (np.ndarray): The required 3x3 transformation matrix H.
+#     Prohibited functions:
+#         cv2.findHomography(), cv2.getPerspectiveTransform(),
+#         np.linalg.solve(), np.linalg.lstsq()
+#     """
+#     h_matrix = np.eye(3, dtype=np.float64)
+
+#     ### YOUR CODE HERE
+
+#     N = src.shape[0]
+
+#     # todo: normalisation
+#     X1, mean1, scale1 = normalize(src)
+#     X2, mean2, scale2 = normalize(dst)
+
+#     # X1 = src
+#     # X2 = dst
+
+#     A = []
+#     for i in range(N):
+#         y1, x1 = X1[i]
+#         y2, x2 = X2[i]
+#         w1 = w2 = 1
+#         A.append([0,0,0,-x1*w2,-y1*w2,-w1*w2,x1*y2,y1*y2,w1*y2])
+#         A.append([x1*w2,y1*w2,w1*w2,0,0,0,-x1*x2,-y1*x2,-w1*x2])
+
+#     #todo: why is this taking forever
+#     u, s, vh = np.linalg.svd(np.array(A))
+
+#     # h_matrix = s.reshape(3, 3)
+#     # s = s/np.linalg.norm(s)
+#     # h_matrix = ((s.reshape(3, 3) / scale2 + mean2) - mean1) * scale1
+
+#     ### END YOUR CODE
+
+#     return h_matrix
+
+def normalize(points):
+   
+    ones = np.ones((points.shape[0], 1))
+    homo_points = np.append(points, ones, axis=1)
+
+    mean_y = np.mean(points[:, 0])
+    mean_x = np.mean(points[:, 1])
+    
+    mean = [mean_y, mean_x] 
+    s = points.shape[0] * math.sqrt(2) / np.linalg.norm(points-mean)
+    normalised_matrix = np.array([s, 0, -mean_y * s, 
+                                    0, s, -mean_x * s,
+                                    0, 0, 1]).reshape(3,3)
+    
+    return np.matmul(homo_points , normalised_matrix), normalised_matrix
 
 def compute_homography(src, dst):
     """Calculates the perspective transform from at least 4 points of
@@ -132,31 +195,32 @@ def compute_homography(src, dst):
     h_matrix = np.eye(3, dtype=np.float64)
 
     ### YOUR CODE HERE
+    
+    # print(h_matrix)
 
     N = src.shape[0]
-
-    # todo: normalisation
-    X1, mean1, scale1 = normalize(src)
-    X2, mean2, scale2 = normalize(dst)
-
-    # X1 = src
-    # X2 = dst
+       
+    X1, S1 = normalize(src)
+    X2, S2 = normalize(dst)
 
     A = []
     for i in range(N):
-        y1, x1 = X1[i]
-        y2, x2 = X2[i]
-        w1 = w2 = 1
-        A.append([0,0,0,-x1*w2,-y1*w2,-w1*w2,x1*y2,y1*y2,w1*y2])
-        A.append([x1*w2,y1*w2,w1*w2,0,0,0,-x1*x2,-y1*x2,-w1*x2])
-
-    #todo: why is this taking forever
+        y1, x1, w1 = X1[i]
+        y2, x2, w2 = X2[i]
+        A.append([x1*-w2,y1*w2,-w1*w2,0,0,0,x1*x2,y1*x2,w1*x2])
+        A.append([0,0,0,x1*-w2,y1*-w2,w1*-w2,x1*y2,y1*y2,w1*y2])
+       
     u, s, vh = np.linalg.svd(np.array(A))
-
-    # h_matrix = s.reshape(3, 3)
-    # s = s/np.linalg.norm(s)
-    # h_matrix = ((s.reshape(3, 3) / scale2 + mean2) - mean1) * scale1
-
+    h_matrix = s.reshape(3, 3)
+    
+    print("++++++")
+    print(h_matrix)
+    
+    S1_inverse = np.linalg.inv(S1)
+    print("=====")
+#     h_matrix = np.matmul(np.matmul(S1_inverse, h_matrix), S2)
+    h_matrix = np.matmul(S1_inverse, np.matmul(h_matrix, S2))
+    print(h_matrix)
     ### END YOUR CODE
 
     return h_matrix
