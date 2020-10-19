@@ -104,6 +104,14 @@ def transform_homography(src, h_matrix, getNormalized = True):
 
     return transformed
 
+
+def normalize(points):
+    mean = np.mean(points)
+    points = points - mean
+    scale = math.sqrt(2)/np.linalg.norm(points)
+    return points * scale, mean, scale
+
+
 def compute_homography(src, dst):
     """Calculates the perspective transform from at least 4 points of
     corresponding points using the **Normalized** Direct Linear Transformation
@@ -128,20 +136,26 @@ def compute_homography(src, dst):
     N = src.shape[0]
 
     # todo: normalisation
-    x = src
-    x2 = dst
+    X1, mean1, scale1 = normalize(src)
+    X2, mean2, scale2 = normalize(dst)
+
+    # X1 = src
+    # X2 = dst
 
     A = []
     for i in range(N):
-        x = src[i]
-        x2 = dst[i]
-        A.append([0, 0, 0, -x[0], -x[1], -1, x[0] * x2[1], x[1] * x2[1]])
-        A.append([x[0], x[1], 1, 0, 0, 0, -x[0] * x2[0], -x[1] * x2[0]])
+        y1, x1 = X1[i]
+        y2, x2 = X2[i]
+        w1 = w2 = 1
+        A.append([0,0,0,-x1*w2,-y1*w2,-w1*w2,x1*y2,y1*y2,w1*y2])
+        A.append([x1*w2,y1*w2,w1*w2,0,0,0,-x1*x2,-y1*x2,-w1*x2])
 
     #todo: why is this taking forever
     u, s, vh = np.linalg.svd(np.array(A))
 
-    h_matrix = s.reshape(3, 3)
+    # h_matrix = s.reshape(3, 3)
+    # s = s/np.linalg.norm(s)
+    # h_matrix = ((s.reshape(3, 3) / scale2 + mean2) - mean1) * scale1
 
     ### END YOUR CODE
 
