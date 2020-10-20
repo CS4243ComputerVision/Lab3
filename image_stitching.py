@@ -169,9 +169,9 @@ def transform_homography(src, h_matrix, getNormalized = True):
 
 def normalise(points):
     mean = np.mean(points, axis=0)
-    scale = 2 * np.std(points, axis=0) / math.sqrt(2)
+    scale = 2 * np.std(points) / math.sqrt(2)
 
-    T = np.array([[1/scale[0], 0, -mean[0]/scale[0]], [0, 1/scale[1], -mean[1]/scale[1]], [0, 0, 1]])
+    T = np.array([[1/scale, 0, -mean[0]/scale], [0, 1/scale, -mean[1]/scale], [0, 0, 1]])
 
     homogenous_points = np.insert(points, 2, values=1, axis=1)
 
