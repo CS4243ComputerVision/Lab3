@@ -159,22 +159,28 @@ def transform_homography(src, h_matrix, getNormalized = True):
 
 #     return h_matrix
 
-def normalize(points):
-   
-    ones = np.ones((points.shape[0], 1))
-    homo_points = np.append(points, ones, axis=1)
 
-    mean_y = np.mean(points[:, 0])
-    mean_x = np.mean(points[:, 1])
-    
-    mean = [mean_y, mean_x] 
-    s = points.shape[0] * math.sqrt(2) / np.linalg.norm(points-mean)
-    normalised_matrix = np.array([s, 0, -mean_y * s, 
-                                    0, s, -mean_x * s,
-                                    0, 0, 1]).reshape(3,3)
-    
-    return np.matmul(homo_points , normalised_matrix), normalised_matrix
 
+# With Reference to: 
+# (1) https://stackoverflow.com/questions/50595893/dlt-vs-homography-estimation
+# Summary:
+# A little math shows that a good choice for the m terms are the averages of the x,y coordinates in each set of image points, and for the s terms you use the standard deviations (or twice the standard deviation) times 1/sqrt(2).
+# You can express this normalizing transformation in matrix form: q = T p, where T = [[1/sx, 0, -mx/sx], [0, 1/sy, -my/sy], [0, 0, 1]], and likewise q' = T' p'.
+
+def normalise(points):
+    mean = np.mean(points)
+    sd = 2 * np.std(points) / math.sqrt(2)
+    
+    T = np.array([[1/sd, 0, -mean/sd], [0, 1/sd, -mean/sd], [0, 0, 1]])
+    
+    normalised_points = transform_homography(points, T) # function homogenises the given points i think
+    
+    return normalised_points, T
+    
+# With Reference to: 
+# (1) (Refer this for step 3)https://www.mail-archive.com/floatcanvas@mithis.com/msg00513.html
+# (2) (Refer Slide 17 for big picture on the overall steps to be performed) https://web.archive.org/web/20150929063658/http://www.ele.puc-rio.br/~visao/Topicos/Homographies.pdf
+# (3) Refer CS4243 slides for DLT computation
 def compute_homography(src, dst):
     """Calculates the perspective transform from at least 4 points of
     corresponding points using the **Normalized** Direct Linear Transformation
@@ -195,27 +201,38 @@ def compute_homography(src, dst):
     h_matrix = np.eye(3, dtype=np.float64)
 
     ### YOUR CODE HERE
-   
-    N = src.shape[0]
-       
-    X1, S1 = normalize(src)
-    X2, S2 = normalize(dst)
-
+    
+    # Step 1: Perform Normalisation
+    P, T = normalise(src)
+    P_Prime, T_Prime = normalise(dst)
+    
+    N = np.array(P).shape[0]
+    
+    # Step 2: Apply DLT on normalised points
     A = []
     for i in range(N):
-        y1, x1, w1 = X1[i]
-        y2, x2, w2 = X2[i]
-        A.append([x1*-w2,-y1*w2,-w1*w2,0,0,0,x1*x2,y1*x2,w1*x2])
-        A.append([0,0,0,x1*-w2,y1*-w2,w1*-w2,x1*y2,y1*y2,w1*y2])
-       
+        x1, y1 = P[i]
+        x2, y2 = P_Prime[i]
+  
+        A.append([-x1, -y1, -1, 0, 0, 0, x1*x2, y1*x2, x2])
+        A.append([0, 0, 0, -x1, -y1, -1, x1*y2, y1*y2, y2])
+
+        
     u, s, vh = np.linalg.svd(np.array(A))
-    h_matrix = s.reshape(3, 3)
     
-    S1_inverse = np.linalg.inv(S1)
-    h_matrix = np.matmul(S1_inverse, np.matmul(h_matrix, S2))
+    # Step 3: Compute H_Matrix on normalised points
+    #The parameters are in the last line of Vh and we need to normalise them:
+    L = vh[-1,:] / vh[-1,-1]
+    h_matrix_normalised = L.reshape(3, 3)
+    
+    # Step 4: Denormalise H_Matrix_Normalised by computing (inverse(T).H_Matrix_Normalised. T_Prime) 
+    T_Prime_Inverse = np.linalg.inv(T_Prime)
+    h_matrix = np.matmul(T_Prime_Inverse, np.matmul(h_matrix_normalised, T_Prime))
+
     ### END YOUR CODE
 
     return h_matrix
+
 
 
 def harris_corners(img, window_size=3, k=0.04):
