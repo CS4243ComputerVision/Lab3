@@ -406,7 +406,46 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
 
     # RANSAC iteration start
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    new_src = np.zeros(N)
+    new_dst = np.zeros(N)
+    
+    for i in range(n_iters):
+        # Select a random set of n_samples of matches
+        random_idx = np.random.choice(N, n_samples, replace=False)       
+
+        # Compute homography matrix
+        # src (np.ndarray): Coordinates of points in the first image (N,2)
+        # dst (np.ndarray): Corresponding coordinates of points in the second image (N,2)
+        src = matched1_unpad[random_idx, :]
+        dst = matched2_unpad[random_idx, :]
+        h = compute_homography(src, dst)        
+
+        # Compute sum of squared difference & Find inliers using provided threshold
+        m1 = matched1[random_idx, :]
+        m2 = matched2[random_idx, :]
+                
+        inliers = []
+        src_inliers = []
+        dst_inliers = []
+        for idx, point_m1 in enumerate(m1):            
+            transformed_m1 = h.dot(point_m1)
+            squared_difference = np.sum((transformed_m1 - m2[idx]) ** 2)
+            if squared_difference < threshold:
+                inliers.append(idx)
+                src_inliers.append(point_m1)
+                dst_inliers.append(m2[idx])
+        
+        if len(inliers) > n_inliers:
+            max_inliers = inliers
+            n_inliers = len(inliers)
+            new_src = src_inliers
+            new_dst = dst_inliers
+
+    # Recomputer least squares estimate using only the inliers
+    print(n_inliers)
+    print(max_inliers)
+    H = compute_homography(new_src, new_dst)
+    
     ### END YOUR CODE
     return H, matches[max_inliers]
 
