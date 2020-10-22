@@ -405,46 +405,62 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
     n_inliers = 0
 
     # RANSAC iteration start
-    ### YOUR CODE HERE
-    new_src = np.zeros(N)
-    new_dst = np.zeros(N)
-    
     for i in range(n_iters):
-        # Select a random set of n_samples of matches
-        random_idx = np.random.choice(N, n_samples, replace=False)       
+        temp_max = np.zeros(N, dtype=np.int32)
+        temp_n = 0
+        idx = np.random.choice(N, n_samples, replace=False)
+        p1 = matched1[idx, :]
+        p2 = matched2[idx, :]
+        H = np.linalg.lstsq(p2, p1, rcond=None)[0]
+        H[:, 2] = np.array([0, 0, 1])
+        temp_max = np.linalg.norm(matched2.dot(H) - matched1, axis=1) ** 2 < threshold
+        temp_n = np.sum(temp_max)
+        if temp_n > n_inliers:
+            max_inliers = temp_max.copy()
+            n_inliers = temp_n
+    H = np.linalg.lstsq(matched2[max_inliers], matched1[max_inliers], rcond=None)[0]
+    H[:, 2] = np.array([0, 0, 1])
 
-        # Compute homography matrix
-        # src (np.ndarray): Coordinates of points in the first image (N,2)
-        # dst (np.ndarray): Corresponding coordinates of points in the second image (N,2)
-        src = matched1_unpad[random_idx, :]
-        dst = matched2_unpad[random_idx, :]
-        h = compute_homography(src, dst)        
+    ### YOUR CODE HERE
+#     new_src = np.zeros(N)
+#     new_dst = np.zeros(N)
+    
+#     for i in range(n_iters):
+#         # Select a random set of n_samples of matches
+#         random_idx = np.random.choice(N, n_samples, replace=False)       
 
-        # Compute sum of squared difference & Find inliers using provided threshold
-        m1 = matched1[random_idx, :]
-        m2 = matched2[random_idx, :]
+#         # Compute homography matrix
+#         # src (np.ndarray): Coordinates of points in the first image (N,2)
+#         # dst (np.ndarray): Corresponding coordinates of points in the second image (N,2)
+#         src = matched1_unpad[random_idx, :]
+#         dst = matched2_unpad[random_idx, :]
+#         h = compute_homography(src, dst)        
+
+#         # Compute sum of squared difference & Find inliers using provided threshold
+#         m1 = matched1[random_idx, :]
+#         m2 = matched2[random_idx, :]
                 
-        inliers = []
-        src_inliers = []
-        dst_inliers = []
-        for idx, point_m1 in enumerate(m1):            
-            transformed_m1 = h.dot(point_m1)
-            squared_difference = np.sum((transformed_m1 - m2[idx]) ** 2)
-            if squared_difference < threshold:
-                inliers.append(idx)
-                src_inliers.append(point_m1)
-                dst_inliers.append(m2[idx])
+#         inliers = []
+#         src_inliers = []
+#         dst_inliers = []
+#         for idx, point_m1 in enumerate(m1):            
+#             transformed_m1 = h.dot(point_m1)
+#             squared_difference = np.sum((transformed_m1 - m2[idx]) ** 2)
+#             if squared_difference < threshold:
+#                 inliers.append(idx)
+#                 src_inliers.append(point_m1)
+#                 dst_inliers.append(m2[idx])
         
-        if len(inliers) > n_inliers:
-            max_inliers = inliers
-            n_inliers = len(inliers)
-            new_src = src_inliers
-            new_dst = dst_inliers
+#         if len(inliers) > n_inliers:
+#             max_inliers = inliers
+#             n_inliers = len(inliers)
+#             new_src = src_inliers
+#             new_dst = dst_inliers
 
-    # Recomputer least squares estimate using only the inliers
-    print(n_inliers)
-    print(max_inliers)
-    H = compute_homography(new_src, new_dst)
+#     # Recomputer least squares estimate using only the inliers
+#     print(n_inliers)
+#     print(max_inliers)
+#     H = compute_homography(new_src, new_dst)
     
     ### END YOUR CODE
     return H, matches[max_inliers]
@@ -493,7 +509,36 @@ def sift_descriptor(patch):
     histogram = np.zeros((4,4,8))
 
     ### YOUR CODE HERE
-    raise NotImplementedError() # Delete this line
+    # https://github.com/rmislam/PythonSIFT/blob/master/pysift.py
+    
+    # Calculate the orientation of each pixel in the patch, split into 8 bins
+    hist_map = []
+    for i, row in enumerate(patch):
+        hist_map_row = []
+        for j in range(len(row)):
+            grad_x = dx[i, j]
+            grad_y = dy[i, j]
+            grad_magnitude = math.sqrt(grad_x * grad_x + grad_y * grad_y)
+            grad_orientation = math.degrees(math.atan2(grad_y, grad_x))
+            hist_orientation = int(math.floor(grad_orientation * 8 / 360)) + 4
+            hist_map_row.append(hist_orientation)
+        hist_map.append(hist_map_row)
+    hist_map = np.array(hist_map)
+    print(hist_map)
+    
+    # Divide patch into 4x4 grid cells of length 4, Compute the histogram for each cell
+    columns = np.split(hist_map, 4,axis=1)
+    for i, column in enumerate(columns):
+        rows = np.split(column, 4, axis=0)
+        for j, arr in enumerate(rows):
+            arr = arr.flatten()
+            for element in arr:
+                histogram[i,j,element] += 1
+    print(histogram)
+    
+    # Append histograms into 128 dimensional vector
+    feature = histogram.flatten()
+    print(feature)
     # END YOUR CODE
 
     return feature
