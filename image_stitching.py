@@ -427,14 +427,14 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
         idx = np.random.choice(N, n_samples, replace=False)
         p1_unpad = matched1_unpad[idx, :]
         p2_unpad = matched2_unpad[idx, :]
-        H = compute_homography(p2_unpad, p1_unpad)
-        transformed = transform_homography(matched2_unpad, H)
-        temp_max = np.linalg.norm(transformed - matched1_unpad, axis=1) ** 2 < threshold
+        H = compute_homography(p1_unpad, p2_unpad)
+        transformed = transform_homography(matched1_unpad, H)
+        temp_max = np.linalg.norm(transformed - matched2_unpad, axis=1) ** 2 < threshold
         temp_n = np.sum(temp_max)
         if temp_n > n_inliers:
             max_inliers = temp_max.copy()
             n_inliers = temp_n
-    H = compute_homography(matched2_unpad[max_inliers], matched1_unpad[max_inliers])
+    H = compute_homography(matched1_unpad[max_inliers], matched2_unpad[max_inliers])
 
     ### YOUR CODE HERE
     
