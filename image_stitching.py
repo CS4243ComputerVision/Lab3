@@ -395,35 +395,48 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
     N = matches.shape[0]
     n_samples = int(N * sampling_ratio)
 
+#     # Please note that coordinates are in the format (y, x)
+#     matched1 = pad(keypoints1[matches[:,0]])
+#     matched2 = pad(keypoints2[matches[:,1]])
+#     matched1_unpad = keypoints1[matches[:,0]]
+#     matched2_unpad = keypoints2[matches[:,1]]
+    
+    # Extract matched keypoints
+    p1 = keypoints1[matches[:,0]]
+    p2 = keypoints2[matches[:,1]]
+
+    # For p1 and p2 the x-coordinate is at p1[:,1] and y at p1[:,0]. Swapping the columns for consistency.
+    p1[:, [0,1]] = p1[:, [1,0]]
+    p2[:, [0,1]] = p2[:, [1,0]]
+    
     # Please note that coordinates are in the format (y, x)
-    matched1 = pad(keypoints1[matches[:,0]])
-    matched2 = pad(keypoints2[matches[:,1]])
-    matched1_unpad = keypoints1[matches[:,0]]
-    matched2_unpad = keypoints2[matches[:,1]]
+    matched1 = pad(p1)
+    matched2 = pad(p2)
+    matched1_unpad = p1
+    matched2_unpad = p2
 
     max_inliers = np.zeros(N)
     n_inliers = 0
+#     new_src = []
+#     new_dst = []
 
     # RANSAC iteration start
     for i in range(n_iters):
         temp_max = np.zeros(N, dtype=np.int32)
         temp_n = 0
         idx = np.random.choice(N, n_samples, replace=False)
-        p1 = matched1[idx, :]
-        p2 = matched2[idx, :]
-        H = np.linalg.lstsq(p2, p1, rcond=None)[0]
-        H[:, 2] = np.array([0, 0, 1])
-        temp_max = np.linalg.norm(matched2.dot(H) - matched1, axis=1) ** 2 < threshold
+        p1_unpad = matched1_unpad[idx, :]
+        p2_unpad = matched2_unpad[idx, :]
+        H = compute_homography(p2_unpad, p1_unpad)
+        transformed = transform_homography(matched2_unpad, H)
+        temp_max = np.linalg.norm(transformed - matched1_unpad, axis=1) ** 2 < threshold
         temp_n = np.sum(temp_max)
         if temp_n > n_inliers:
             max_inliers = temp_max.copy()
             n_inliers = temp_n
-    H = np.linalg.lstsq(matched2[max_inliers], matched1[max_inliers], rcond=None)[0]
-    H[:, 2] = np.array([0, 0, 1])
+    H = compute_homography(matched2_unpad[max_inliers], matched1_unpad[max_inliers])
 
     ### YOUR CODE HERE
-#     new_src = np.zeros(N)
-#     new_dst = np.zeros(N)
     
 #     for i in range(n_iters):
 #         # Select a random set of n_samples of matches
@@ -437,23 +450,23 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
 #         h = compute_homography(src, dst)        
 
 #         # Compute sum of squared difference & Find inliers using provided threshold
-#         m1 = matched1[random_idx, :]
-#         m2 = matched2[random_idx, :]
-                
+#         transformed = transform_homography(src, h)
+#         sum_squared_difference = 0
+        
 #         inliers = []
 #         src_inliers = []
 #         dst_inliers = []
-#         for idx, point_m1 in enumerate(m1):            
-#             transformed_m1 = h.dot(point_m1)
-#             squared_difference = np.sum((transformed_m1 - m2[idx]) ** 2)
+#         for idx, point in enumerate(transformed):            
+#             squared_difference = np.sum((point - dst[idx]) ** 2)
+#             sum_squared_difference += squared_difference
 #             if squared_difference < threshold:
 #                 inliers.append(idx)
-#                 src_inliers.append(point_m1)
-#                 dst_inliers.append(m2[idx])
+#                 src_inliers.append(src[idx])
+#                 dst_inliers.append(dst[idx])
         
 #         if len(inliers) > n_inliers:
-#             max_inliers = inliers
 #             n_inliers = len(inliers)
+#             max_inliers = inliers
 #             new_src = src_inliers
 #             new_dst = dst_inliers
 
