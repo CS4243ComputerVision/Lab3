@@ -513,32 +513,50 @@ def sift_descriptor(patch):
     
     # Calculate the orientation of each pixel in the patch, split into 8 bins
     hist_map = []
+    mag_map = []
     for i, row in enumerate(patch):
         hist_map_row = []
+        mag_map_row = []
         for j in range(len(row)):
             grad_x = dx[i, j]
             grad_y = dy[i, j]
             grad_magnitude = math.sqrt(grad_x * grad_x + grad_y * grad_y)
             grad_orientation = math.degrees(math.atan2(grad_y, grad_x))
-            hist_orientation = int(math.floor(grad_orientation * 8 / 360)) + 4
+            hist_index = int(math.floor(grad_orientation * 8 / 360)) + 4
+            hist_orientation = hist_index % 8
             hist_map_row.append(hist_orientation)
+            mag_map_row.append(grad_magnitude)
         hist_map.append(hist_map_row)
+        mag_map.append(mag_map_row)
     hist_map = np.array(hist_map)
-    print(hist_map)
+    mag_map = np.array(mag_map)
+    #print(hist_map)
+    #print(mag_map)
     
     # Divide patch into 4x4 grid cells of length 4, Compute the histogram for each cell
     columns = np.split(hist_map, 4,axis=1)
-    for i, column in enumerate(columns):
+    mag_columns = np.split(mag_map, 4, axis=1)
+    for i, (column, mag_column) in enumerate(zip(columns, mag_columns)):
         rows = np.split(column, 4, axis=0)
-        for j, arr in enumerate(rows):
+        mag_rows = np.split(mag_column, 4, axis=0)
+        for j, (arr, mag_arr) in enumerate(zip(rows,mag_rows)):
             arr = arr.flatten()
-            for element in arr:
-                histogram[i,j,element] += 1
-    print(histogram)
+            mag_arr = mag_arr.flatten()
+            for element, mag_element in zip(arr, mag_arr):
+                histogram[i,j,element] += mag_element
+    #print(histogram)
+    
+    # Normalise histogram
+    for i, row in enumerate(histogram):
+        for j, column in enumerate(row):
+            sub_hist = histogram[i, j]
+            histogram[i, j] = np.linalg.norm(sub_hist)     
+    #print(histogram)
     
     # Append histograms into 128 dimensional vector
     feature = histogram.flatten()
-    print(feature)
+    #print(feature)
+    
     # END YOUR CODE
 
     return feature
