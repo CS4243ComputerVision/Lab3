@@ -394,12 +394,6 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
     """
     N = matches.shape[0]
     n_samples = int(N * sampling_ratio)
-
-#     # Please note that coordinates are in the format (y, x)
-#     matched1 = pad(keypoints1[matches[:,0]])
-#     matched2 = pad(keypoints2[matches[:,1]])
-#     matched1_unpad = keypoints1[matches[:,0]]
-#     matched2_unpad = keypoints2[matches[:,1]]
     
     # Extract matched keypoints
     p1 = keypoints1[matches[:,0]]
@@ -417,26 +411,31 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
 
     max_inliers = np.zeros(N)
     n_inliers = 0
-#     new_src = []
-#     new_dst = []
+
+    ### YOUR CODE HERE
 
     # RANSAC iteration start
     for i in range(n_iters):
         temp_max = np.zeros(N, dtype=np.int32)
         temp_n = 0
+        # 1. Select random set of matches
         idx = np.random.choice(N, n_samples, replace=False)
         p1_unpad = matched1_unpad[idx, :]
         p2_unpad = matched2_unpad[idx, :]
+        # 2. Compute affine transformation matrix 
         H = compute_homography(p1_unpad, p2_unpad)
         transformed = transform_homography(matched1_unpad, H)
+        # 3. Compute inliers 
         temp_max = np.linalg.norm(transformed - matched2_unpad, axis=1) ** 2 < threshold
         temp_n = np.sum(temp_max)
+        # 4. Keep the largest set of inliers
         if temp_n > n_inliers:
             max_inliers = temp_max.copy()
             n_inliers = temp_n
     H = compute_homography(matched1_unpad[max_inliers], matched2_unpad[max_inliers])
-
-    ### YOUR CODE HERE
+    
+#     new_src = []
+#     new_dst = []
     
 #     for i in range(n_iters):
 #         # Select a random set of n_samples of matches
@@ -479,6 +478,7 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
     return H, matches[max_inliers]
 
 
+# Input:  16 x 16 patch
 def sift_descriptor(patch):
     """
     Your implementation does not need to exactly match the SIFT reference.
@@ -527,6 +527,9 @@ def sift_descriptor(patch):
     # Calculate the orientation of each pixel in the patch, split into 8 bins
     hist_map = []
     mag_map = []
+    eight_gradient_bins = [-135, -90, -45, 0, 45, 90, 135, 180]
+    
+    
     for i, row in enumerate(patch):
         hist_map_row = []
         mag_map_row = []
@@ -534,9 +537,13 @@ def sift_descriptor(patch):
             grad_x = dx[i, j]
             grad_y = dy[i, j]
             grad_magnitude = math.sqrt(grad_x * grad_x + grad_y * grad_y)
-            grad_orientation = math.degrees(math.atan2(grad_y, grad_x))
-            hist_index = int(math.floor(grad_orientation * 8 / 360)) + 4
-            hist_orientation = hist_index % 8
+            # output could range from (-179, 180)
+            grad_orientation = math.degrees(math.atan2(grad_y, grad_x)) 
+            # We want the orientation to be in 8 bins
+            # hist_index = int(math.floor(grad_orientation * 8 / 360)) + 4 
+            # hist_orientation = hist_index % 8
+            hist_orientation = np.searchsorted(eight_gradient_bins, grad_orientation, side = "left")
+            #print(hist_orientation)
             hist_map_row.append(hist_orientation)
             mag_map_row.append(grad_magnitude)
         hist_map.append(hist_map_row)
@@ -546,7 +553,10 @@ def sift_descriptor(patch):
     #print(hist_map)
     #print(mag_map)
     
-    # Divide patch into 4x4 grid cells of length 4, Compute the histogram for each cell
+    # Divide patch into 4x4 grid squares
+    # Each 4x4 squares will have a histogram each. 
+    # Since input is 16 x 16 squares here, we have 16 4x4 squares.
+    # We will have a total of 16 histograms detailing the feature vectors of each 4x4 squares.
     columns = np.split(hist_map, 4,axis=1)
     mag_columns = np.split(mag_map, 4, axis=1)
     for i, (column, mag_column) in enumerate(zip(columns, mag_columns)):
