@@ -105,61 +105,6 @@ def transform_homography(src, h_matrix, getNormalized = True):
     return transformed
 
 
-# def normalize(points):
-#     mean = np.mean(points)
-#     points = points - mean
-#     scale = math.sqrt(2)/np.linalg.norm(points)
-#     return points * scale, mean, scale
-
-
-
-# def compute_homography(src, dst):
-#     """Calculates the perspective transform from at least 4 points of
-#     corresponding points using the **Normalized** Direct Linear Transformation
-#     method.
-#     Args:
-#         src (np.ndarray): Coordinates of points in the first image (N,2)
-#         dst (np.ndarray): Corresponding coordinates of points in the second
-#                           image (N,2)
-#     Returns:
-#         h_matrix (np.ndarray): The required 3x3 transformation matrix H.
-#     Prohibited functions:
-#         cv2.findHomography(), cv2.getPerspectiveTransform(),
-#         np.linalg.solve(), np.linalg.lstsq()
-#     """
-#     h_matrix = np.eye(3, dtype=np.float64)
-
-#     ### YOUR CODE HERE
-
-#     N = src.shape[0]
-
-#     # todo: normalisation
-#     X1, mean1, scale1 = normalize(src)
-#     X2, mean2, scale2 = normalize(dst)
-
-#     # X1 = src
-#     # X2 = dst
-
-#     A = []
-#     for i in range(N):
-#         y1, x1 = X1[i]
-#         y2, x2 = X2[i]
-#         w1 = w2 = 1
-#         A.append([0,0,0,-x1*w2,-y1*w2,-w1*w2,x1*y2,y1*y2,w1*y2])
-#         A.append([x1*w2,y1*w2,w1*w2,0,0,0,-x1*x2,-y1*x2,-w1*x2])
-
-#     #todo: why is this taking forever
-#     u, s, vh = np.linalg.svd(np.array(A))
-
-#     # h_matrix = s.reshape(3, 3)
-#     # s = s/np.linalg.norm(s)
-#     # h_matrix = ((s.reshape(3, 3) / scale2 + mean2) - mean1) * scale1
-
-#     ### END YOUR CODE
-
-#     return h_matrix
-
-
 
 # With Reference to:
 # (1) https://stackoverflow.com/questions/50595893/dlt-vs-homography-estimation
@@ -433,46 +378,7 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
             max_inliers = temp_max.copy()
             n_inliers = temp_n
     H = compute_homography(matched1_unpad[max_inliers], matched2_unpad[max_inliers])
-    
-#     new_src = []
-#     new_dst = []
-    
-#     for i in range(n_iters):
-#         # Select a random set of n_samples of matches
-#         random_idx = np.random.choice(N, n_samples, replace=False)       
-
-#         # Compute homography matrix
-#         # src (np.ndarray): Coordinates of points in the first image (N,2)
-#         # dst (np.ndarray): Corresponding coordinates of points in the second image (N,2)
-#         src = matched1_unpad[random_idx, :]
-#         dst = matched2_unpad[random_idx, :]
-#         h = compute_homography(src, dst)        
-
-#         # Compute sum of squared difference & Find inliers using provided threshold
-#         transformed = transform_homography(src, h)
-#         sum_squared_difference = 0
-        
-#         inliers = []
-#         src_inliers = []
-#         dst_inliers = []
-#         for idx, point in enumerate(transformed):            
-#             squared_difference = np.sum((point - dst[idx]) ** 2)
-#             sum_squared_difference += squared_difference
-#             if squared_difference < threshold:
-#                 inliers.append(idx)
-#                 src_inliers.append(src[idx])
-#                 dst_inliers.append(dst[idx])
-        
-#         if len(inliers) > n_inliers:
-#             n_inliers = len(inliers)
-#             max_inliers = inliers
-#             new_src = src_inliers
-#             new_dst = dst_inliers
-
-#     # Recomputer least squares estimate using only the inliers
-#     print(n_inliers)
-#     print(max_inliers)
-#     H = compute_homography(new_src, new_dst)
+   
     
     ### END YOUR CODE
     return H, matches[max_inliers]
@@ -540,8 +446,6 @@ def sift_descriptor(patch):
             # output could range from (-179, 180)
             grad_orientation = math.degrees(math.atan2(grad_y, grad_x)) 
             # We want the orientation to be in 8 bins
-            # hist_index = int(math.floor(grad_orientation * 8 / 360)) + 4 
-            # hist_orientation = hist_index % 8
             hist_orientation = np.searchsorted(eight_gradient_bins, grad_orientation, side = "left")
             #print(hist_orientation)
             hist_map_row.append(hist_orientation)
