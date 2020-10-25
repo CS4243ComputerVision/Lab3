@@ -370,8 +370,8 @@ def ransac(keypoints1, keypoints2, matches, sampling_ratio=0.5, n_iters=500, thr
         # 2. Compute affine transformation matrix 
         H = compute_homography(p1_unpad, p2_unpad)
         transformed = transform_homography(matched1_unpad, H)
-        # 3. Compute inliers 
-        temp_max = np.linalg.norm(transformed - matched2_unpad, axis=1) ** 2 < threshold
+        # 3. Compute inliers
+        temp_max = np.linalg.norm(transformed - matched2_unpad, axis=1) < threshold
         temp_n = np.sum(temp_max)
         # 4. Keep the largest set of inliers
         if temp_n > n_inliers:
